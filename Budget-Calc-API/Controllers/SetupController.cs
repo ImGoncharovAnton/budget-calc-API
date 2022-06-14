@@ -89,8 +89,8 @@ public class SetupController : Controller
                 incomeArr = m.Items.Where(x => x.Type == 0).Select(i => new
                     {
                         id = i.Id,
-                        value = i.Value,
                         createdBy = i.CreatedBy,
+                        value = i.Value,
                         description = i.Description,
                         monthId = i.MonthId
                     }
@@ -98,8 +98,8 @@ public class SetupController : Controller
                 expenseArr = m.Items.Where(x => x.Type != 0).Select(i => new
                     {
                         id = i.Id,
-                        value = i.Value,
                         createdBy = i.CreatedBy,
+                        value = i.Value,
                         description = i.Description,
                         monthId = i.MonthId
                     }
