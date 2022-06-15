@@ -65,7 +65,8 @@ public class ItemsController : Controller
                 createdBy = i.CreatedBy,
                 value = i.Value,
                 description = i.Description,
-                monthId = i.MonthId
+                monthId = i.MonthId,
+                type = i.Type
             })
             .ToListAsync();
 
@@ -88,7 +89,8 @@ public class ItemsController : Controller
                 createdBy = i.CreatedBy,
                 value = i.Value,
                 description = i.Description,
-                monthId = i.MonthId
+                monthId = i.MonthId,
+                type = i.Type
             })
             .ToListAsync();
 

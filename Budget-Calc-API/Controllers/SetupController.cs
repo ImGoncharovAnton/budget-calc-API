@@ -1,6 +1,7 @@
 ﻿using Budget;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 
 namespace aspnetcore_auth.Controllers;
@@ -13,17 +14,30 @@ public class SetupController : Controller
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly RoleManager<ApplicationRole> _roleManager;
     private readonly ILogger<SetupController> _logger;
+    private readonly IHubContext<MessageHub> _hubContext;
 
-
-    public SetupController(ApplicationDbContext context, UserManager<ApplicationUser> userManager, RoleManager<ApplicationRole> roleManager,
-        ILogger<SetupController> logger)
+    public SetupController(
+        ApplicationDbContext context, 
+        UserManager<ApplicationUser> userManager, 
+        RoleManager<ApplicationRole> roleManager,
+        ILogger<SetupController> logger, 
+        IHubContext<MessageHub> hubContext)
     {
         _context = context;
         _userManager = userManager;
         _roleManager = roleManager;
         _logger = logger;
+        _hubContext = hubContext;
     }
 
+    [HttpPost]
+    [Route("[action]")]
+    public async Task<IActionResult> SendMessage(MessageResponse message)
+    {
+        await _hubContext.Clients.All.SendAsync("MessageReceived", message);
+        return Ok();
+    }
+    
     [HttpGet]
     [Route("GetAllRoles")]
     public IActionResult GetAllRoles()
@@ -65,93 +79,52 @@ public class SetupController : Controller
         return BadRequest(new { error = "Role already exist" });
     }
 
-    // NotAllowed add in all files...
-
     [HttpGet]
     [Route("[action]/{id}")]
     public async Task<IActionResult> GetUser(string id)
     {
-        var user = await _context.Users
-            .FirstOrDefaultAsync(u => u.Id == id);
-        if (user == null)
-            return NotFound();
-
-        var monthsForUserWithItems = await _context.Months
-            .Where(m => m.ApplicationUserId == id)
-            .Select(m => new
-            {
-                id = m.Id,
-                monthNum = m.MonthNum,
-                year = m.Year,
-                userId = m.ApplicationUserId,
-                income = m.Items.Where(x => x.Type == 0).Sum(s => s.Value),
-                expense = m.Items.Where(x => x.Type != 0).Sum(s => s.Value),
-                incomeArr = m.Items.Where(x => x.Type == 0).Select(i => new
-                    {
-                        id = i.Id,
-                        createdBy = i.CreatedBy,
-                        value = i.Value,
-                        description = i.Description,
-                        monthId = i.MonthId
-                    }
-                ),
-                expenseArr = m.Items.Where(x => x.Type != 0).Select(i => new
-                    {
-                        id = i.Id,
-                        createdBy = i.CreatedBy,
-                        value = i.Value,
-                        description = i.Description,
-                        monthId = i.MonthId
-                    }
-                )
-            }).ToListAsync();
-
-        return Ok(monthsForUserWithItems);
-        
-        /*try
+        // var user = await _context.Users
+        //     .FirstOrDefaultAsync(u => u.Id == id);
+        // if (user == null)
+        //     return NotFound();
+        try
         {
-            // предупреждение вылетает при суммировании.
-            var user = await _userManager.Users
-                .Where(x => x.Id == id)
-                .Select(u => new
+            var monthsForUserWithItems = await _context.Months
+                .Where(m => m.ApplicationUserId == id)
+                .Select(m => new
                 {
-                    id = u.Id,
-                    userName = u.UserName,
-                    email = u.Email,
-                    months = u.Months.Select(m => new
-                    {
-                        id = m.Id,
-                        monthNum = m.MonthNum,
-                        year = m.Year,
-                        userId = m.ApplicationUserId,
-                        income = m.Items.Where(x => x.Type == 0).Sum(s => s.Value),
-                        expense = m.Items.Where(x => x.Type != 0).Sum(s => s.Value),
-                        incomeArr = m.Items.Where(x => x.Type == 0).Select(i => new
-                            {
-                                id = i.Id,
-                                value = i.Value,
-                                createdBy = i.CreatedBy,
-                                description = i.Description,
-                                monthId = i.MonthId
-                            }
-                            ),
-                        expenseArr = m.Items.Where(x => x.Type != 0).Select(i => new
-                            {
-                                id = i.Id,
-                                value = i.Value,
-                                createdBy = i.CreatedBy,
-                                description = i.Description,
-                                monthId = i.MonthId
-                            }
-                        ),
-                    })
-                }).FirstAsync();
-            return Ok(user);
+                    id = m.Id,
+                    monthNum = m.MonthNum,
+                    year = m.Year,
+                    userId = m.ApplicationUserId,
+                    income = m.Items.Where(x => x.Type == 0).Sum(s => s.Value),
+                    expense = m.Items.Where(x => x.Type != 0).Sum(s => s.Value),
+                    incomeArr = m.Items.Where(x => x.Type == 0).Select(i => new
+                        {
+                            id = i.Id,
+                            createdBy = i.CreatedBy,
+                            value = i.Value,
+                            description = i.Description,
+                            monthId = i.MonthId
+                        }
+                    ),
+                    expenseArr = m.Items.Where(x => x.Type != 0).Select(i => new
+                        {
+                            id = i.Id,
+                            createdBy = i.CreatedBy,
+                            value = i.Value,
+                            description = i.Description,
+                            monthId = i.MonthId
+                        }
+                    )
+                }).ToListAsync();
+
+            return Ok(monthsForUserWithItems);
         }
         catch (Exception e)
         {
             return NotFound();
-        }*/
+        }
     }
 
     [HttpGet]

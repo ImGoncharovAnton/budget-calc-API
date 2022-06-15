@@ -36,6 +36,9 @@ var tokenValidationParams = new TokenValidationParameters
     RequireExpirationTime = true
 };
 
+// SignalR
+builder.Services.AddSignalR();
+
 builder.Services.AddSingleton(tokenValidationParams);
 
 builder.Services.AddAuthentication(options =>
@@ -119,13 +122,15 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 
 app.UseCors(o => o
-    .AllowAnyOrigin()
     .AllowAnyHeader()
-    .AllowAnyMethod());
+    .AllowAnyMethod()
+    .SetIsOriginAllowed((host) => true)
+    .AllowCredentials());
 
 app.UseAuthentication();
 app.UseAuthorization();
 
+app.MapHub<MessageHub>("/messageHub");
 app.MapControllers();
 
 app.Run();
