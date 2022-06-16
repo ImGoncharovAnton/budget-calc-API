@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace aspnetcore_auth.Controllers;
 
+[Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
 [Route("api/[controller]/[action]")]
 [ApiController]
 public class ItemsController : Controller
@@ -20,7 +21,6 @@ public class ItemsController : Controller
 
     [HttpGet]
     [Route("")] // api/items/getitems
-    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
     public async Task<IActionResult> GetItems()
     {
         var items = await _context.Items.ToListAsync();

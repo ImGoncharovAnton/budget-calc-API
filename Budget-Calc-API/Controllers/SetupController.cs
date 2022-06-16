@@ -1,4 +1,6 @@
 ﻿using Budget;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
@@ -29,7 +31,8 @@ public class SetupController : Controller
         _logger = logger;
         _hubContext = hubContext;
     }
-
+    
+    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
     [HttpPost]
     [Route("[action]")]
     public async Task<IActionResult> SendMessage(MessageResponse message)
@@ -38,6 +41,7 @@ public class SetupController : Controller
         return Ok();
     }
     
+    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme, Roles = "Immortal")]
     [HttpGet]
     [Route("GetAllRoles")]
     public IActionResult GetAllRoles()
@@ -47,6 +51,7 @@ public class SetupController : Controller
     }
     
 
+    [AllowAnonymous]
     [HttpPost]
     [Route("CreateRole")]
     public async Task<IActionResult> CreateRole(string name)
@@ -79,6 +84,7 @@ public class SetupController : Controller
         return BadRequest(new { error = "Role already exist" });
     }
 
+    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme, Roles = "Immortal")]
     [HttpGet]
     [Route("[action]/{id}")]
     public async Task<IActionResult> GetUser(string id)
@@ -126,7 +132,7 @@ public class SetupController : Controller
             return NotFound();
         }
     }
-
+    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme, Roles = "Immortal")]
     [HttpGet]
     [Route("GetAllUsers")]
     public async Task<IActionResult> GetAllUsers()
@@ -173,40 +179,15 @@ public class SetupController : Controller
             }
             ]
         }*/
-
         
-        // --------------------------------------------------------------------------------
-         /*// its working, but more queries
-        // Fetch all the Users
-        var users = await _userManager.Users
-            .Select(u => new { User = u, Roles = new List<string>() })
-            .ToListAsync();
-
-        // Fetch all the Roles
-        var roleNames = await _roleManager.Roles
-            .Select(r => r.Name)
-            .ToListAsync();
-
-        foreach (var roleName in roleNames)
-        {
-            // For each role, fetch the users
-            var usersInRole = await _userManager.GetUsersInRoleAsync(roleName);
-            
-            // Populate the roles for each user in memory
-            var toUpdate = users.Where(u => 
-                usersInRole.Any(ur => ur.Id == u.User.Id));
-
-            foreach (var user in toUpdate)
-            {
-                user.Roles.Add(roleName);
-            }
-        }*/
+        // mappers
+        // var get = this.MapperFactory().CreateMapper<IUserMapper>.MapToModel(allUsers)
         
-
-        // return Ok(users);
+        
         return Ok(allUsers);
     }
 
+    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
     [HttpPost]
     [Route("AddUserToRole")]
     public async Task<IActionResult> AddUserToRole(string email, string roleName)
@@ -255,28 +236,37 @@ public class SetupController : Controller
         }
     }
 
+    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme, Roles = "Immortal")]
     [HttpGet]
     [Route("GetUserRoles")]
     public async Task<IActionResult> GetUserRoles(string email)
     {
         // Check if the user exist
-        var user = await _userManager.FindByEmailAsync(email);
-
-        if (user == null) // User does not exist
+        try
         {
-            _logger.LogInformation($"The user with the {email} does not exist");
-            return BadRequest(new
+            var user = await _userManager.FindByEmailAsync(email);
+
+            if (user == null) // User does not exist
             {
-                error = "User does not exist"
-            });
+                _logger.LogInformation($"The user with the {email} does not exist");
+                return BadRequest(new
+                {
+                    error = "User does not exist"
+                });
+            }
+
+            // return the roles
+            var roles = await _userManager.GetRolesAsync(user);
+
+            return Ok(roles);
         }
-
-        // return the roles
-        var roles = await _userManager.GetRolesAsync(user);
-
-        return Ok(roles);
+        catch (Exception e)
+        {
+            throw e;
+        }
     }
 
+    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
     [HttpPost]
     [Route("RemoveUserFromRole")]
     public async Task<IActionResult> RemoveUserFromRole(string email, string roleName)

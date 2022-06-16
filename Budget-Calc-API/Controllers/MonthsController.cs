@@ -1,10 +1,13 @@
 ﻿using aspnetcore_auth.Models.UI;
 using Budget;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
 namespace aspnetcore_auth.Controllers;
 
+[Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
 [Route("api/[controller]")] // api/months
 [ApiController]
 public class MonthsController : Controller
