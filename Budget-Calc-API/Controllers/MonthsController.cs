@@ -1,4 +1,8 @@
-﻿using aspnetcore_auth.Models.UI;
+﻿using aspnetcore_auth.Models.DTOs.Requests;
+using aspnetcore_auth.Models.DTOs.Responses;
+using aspnetcore_auth.Models.UI;
+using AutoMapper;
+using AutoMapper.QueryableExtensions;
 using Budget;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
@@ -13,23 +17,22 @@ namespace aspnetcore_auth.Controllers;
 public class MonthsController : Controller
 {
     private readonly ApplicationDbContext _context;
-
-    public MonthsController(ApplicationDbContext context)
+    private readonly IMapper _mapper;
+    
+    public MonthsController(ApplicationDbContext context, IMapper mapper)
     {
         _context = context;
+        _mapper = mapper;
     }
 
     [HttpGet]
-    [Route("[action]")]
     public async Task<IActionResult> GetMonths()
     {
         var months = await _context.Months.Include(x => x.Items).ToListAsync();
         return Ok(months);
     }
-
-
+    
     [HttpPost]
-    [Route("[action]")]
     public async Task<IActionResult> CreateMonth(MonthUserData userData)
     {
         if (!ModelState.IsValid) return new JsonResult("Model is not valid") { StatusCode = 500 };
@@ -52,7 +55,7 @@ public class MonthsController : Controller
     }
 
     [HttpGet]
-    [Route("[action]/{id:int}")]
+    [Route("{id:int}")]
     public async Task<IActionResult> GetMonth(int id)
     {
         var month = await _context.Months
@@ -62,31 +65,30 @@ public class MonthsController : Controller
         if (month == null)
             return NotFound();
 
-        return Ok(month);
+        var mappedMonth = _mapper.Map<MonthDto>(month);
+        
+        return Ok(mappedMonth);
     }
 
     [HttpGet]
-    [Route("[action]/{id}")]
+    [Route("{id}")]
     public async Task<IActionResult> GetMonthForUser(string id)
     {
         var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == id);
         if (user == null)
             return NotFound();
 
-        // возможно можно запустить тут проверку на изменение.
-        // сравнить id с createdBy items 
-        
         var monthsForUser = await _context.Months
             .Where(m => m.ApplicationUserId == id)
-            .Select(m => new
+            .Select(x => new ResponseMonthsForUser()
             {
-                id = m.Id,
-                monthNum = m.MonthNum,
-                year = m.Year,
-                userId = m.ApplicationUserId,
-                income = m.Items.Where(x => x.Type == 0).Sum(s => s.Value),
-                expense = m.Items.Where(x => x.Type != 0).Sum(s => s.Value),
-                adminChanged = m.Items.Any(i => i.CreatedBy != id) // true or false
+                Id = x.Id,
+                MonthNum = x.MonthNum,
+                Year = x.Year,
+                UserId = x.ApplicationUserId,
+                Income = x.Items.Where(x => x.Type == 0).Sum(s => s.Value),
+                Expense = x.Items.Where(x => x.Type != 0).Sum(s => s.Value),
+                AdminChanged = x.Items.Any(i => i.CreatedBy != id) // true or false
             })
             .ToListAsync();
 
@@ -113,7 +115,7 @@ public class MonthsController : Controller
         return Ok(monthsForUser);
     }
 
-    [HttpDelete("deleteMonth/{id}")]
+    [HttpDelete("{id}")]
     public async Task<IActionResult> DeleteMonth(int id)
     {
         var existMonth = await _context.Months
@@ -125,7 +127,8 @@ public class MonthsController : Controller
 
         _context.Months.Remove(existMonth);
         await _context.SaveChangesAsync();
+        var mappedMonth = _mapper.Map<MonthDto>(existMonth);
 
-        return Ok(existMonth);
+        return Ok(mappedMonth);
     }
 }
